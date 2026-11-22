@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>AMOUR — Ekran & Sohbet Odası</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        body {
+            background-color: #12060d;
+            color: #fff1f5;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .candle-glow {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 18% 16%, rgba(244, 63, 94, 0.22) 0%, transparent 45%),
+                radial-gradient(circle at 82% 24%, rgba(251, 113, 133, 0.14) 0%, transparent 48%),
+                radial-gradient(circle at 50% 90%, rgba(190, 18, 60, 0.14) 0%, transparent 55%);
+            animation: candleBreath 7s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes candleBreath {
+            0% { opacity: 0.85; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.03); }
+        }
+
+        .velvet-glass {
+            background: rgba(28, 10, 21, 0.84);
+            backdrop-filter: blur(16px);
+        }
+
+        body.room-dimmed .dim-target {
+            opacity: 0.35;
+            transition: opacity 0.35s ease;
+        }
+        body.room-dimmed .dim-target:hover {
+            opacity: 0.9;
+        }
+        body.room-dimmed #screen-stage {
+            box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.35), 0 0 65px rgba(225, 29, 72, 0.25);
+        }
+
+        /* iOS / Safari div tam ekran fallback */
+        #screen-stage.ios-stage-fullscreen {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            aspect-ratio: auto !important;
+            z-index: 60 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            background-color: #050204 !important;
+        }
+
+        body.ios-fs-active {
+            overflow: hidden !important;
+        }
+
+        @keyframes waSingleFloat {
+            0% {
+                transform: translateY(16px) translateX(0px) scale(0.35);
+                opacity: 0;
+            }
+            18% {
+                opacity: 1;
+                transform: translateY(-22px) translateX(var(--wa-x1, 12px)) scale(1.38);
+            }
+            36% {
+                transform: translateY(-50px) translateX(calc(var(--wa-x1, 12px) * -0.7)) scale(1.12);
+            }
+            72% {
+                opacity: 0.96;
+                transform: translateY(-165px) translateX(var(--wa-x2, -14px)) scale(1.05);
+            }
+            100% {
+                transform: translateY(-270px) translateX(var(--wa-x1, 12px)) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        .wa-single-emoji {
+            position: absolute;
+            bottom: 16px;
+            pointer-events: none;
+            user-select: none;
+            animation: waSingleFloat 2.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.78));
+            z-index: 45;
+        }
+
+        @keyframes igHeartSwirl {
+            0% {
+                transform: translateY(22px) translateX(0px) scale(0.3) rotate(-10deg);
+                opacity: 0;
+            }
+            15% {
+                opacity: 1;
+                transform: translateY(-38px) translateX(var(--h1, 38px)) scale(1.28) rotate(12deg);
+            }
+            45% {
+                opacity: 0.98;
+                transform: translateY(-130px) translateX(var(--h2, -44px)) scale(1.14) rotate(-14deg);
+            }
+            75% {
+                opacity: 0.92;
+                transform: translateY(-230px) translateX(var(--h3, 34px)) scale(1.02) rotate(10deg);
+            }
+            100% {
+                transform: translateY(-335px) translateX(var(--h4, -20px)) scale(0.75) rotate(-8deg);
+                opacity: 0;
+            }
+        }
+
+        .ig-heart-swirl {
+            position: absolute;
+            bottom: 10px;
+            pointer-events: none;
+            user-select: none;
+            animation: igHeartSwirl var(--hdur, 2.8s) cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
+            filter: drop-shadow(0 0 14px rgba(244, 63, 94, 0.78));
+            z-index: 48;
+        }
+
+        @keyframes bubbleFadeUp {
+            0% { opacity: 0; transform: translateY(14px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .fs-transparent-card {
+            animation: bubbleFadeUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(28, 10, 21, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(244, 63, 94, 0.42);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-rose-500/35 selection:text-rose-100">
+    <div class="candle-glow"></div>
+
+    <!-- Bildirimler -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-xs w-full"></div>
+
+    <!-- TEK İSİM GİRİŞ EKRANI -->
+    <div id="setup-screen" class="fixed inset-0 z-40 bg-[#12060d]/90 backdrop-blur-2xl flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-gradient-to-b from-[#280e1d] to-[#160710] border border-rose-500/25 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-rose-950/60 relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400/80"></div>
+
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center text-xl shadow-lg shadow-rose-600/35">
+                    🕯️
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-wider text-white uppercase">AMOUR</h1>
+                    <p class="text-xs text-rose-200/70">Ekran & samimi sohbet odası</p>
+                </div>
+            </div>
+
+            <form id="join-form" class="space-y-4">
+                <div>
+                    <label for="input-name" class="block text-xs font-semibold uppercase tracking-wider text-rose-200/80 mb-1.5">İsmin</label>
+                    <input type="text" id="input-name" required maxlength="20" placeholder="İsmini yaz..."
+                        class="w-full px-4 py-3 rounded-xl bg-[#10050b] border border-rose-500/25 text-white placeholder-rose-200/35 focus:outline-none focus:border-rose-400 transition">
+                </div>
+
+                <button type="submit"
+                    class="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold shadow-lg shadow-rose-700/35 transition transform active:scale-[0.99]">
+                    AMOUR'a Gir
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ÜST ÇUBUK -->
+    <header class="dim-target relative z-20 border-b border-rose-500/20 velvet-glass px-4 py-3">
+        <div class="max-w-[1550px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            <!-- Sol: AMOUR & Canlı Sinyal -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-400/30 flex items-center justify-center text-rose-300 text-base">
+                    🌹
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-sm sm:text-base tracking-wider uppercase text-white">AMOUR</span>
+                        <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-200 border border-rose-400/25">
+                            Özel Oda
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span id="status-dot" class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
+                        <span id="status-text" class="text-rose-100/70">Bağlantı bekleniyor...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orta: Sesli Sohbet & Oda Işığı -->
+            <div class="flex items-center gap-2 bg-[#10050b]/90 border border-rose-500/20 rounded-2xl px-3 py-1.5">
+                <button type="button" id="btn-voice-toggle" onclick="toggleVoiceChat()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-rose-500/15 hover:bg-rose-500/25 text-rose-100 transition">
+                    <svg class="w-4 h-4 text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                    <span id="voice-btn-label">Sesli Sohbet</span>
+                </button>
+
+                <button type="button" id="btn-mute-toggle" onclick="toggleMuteMic()" disabled title="Mikrofonu Aç / Kapat"
+                    class="p-1.5 rounded-xl bg-rose-500/10 text-rose-300/40 disabled:opacity-40 hover:bg-rose-500/20 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                    </svg>
+                </button>
+
+                <div class="hidden sm:flex items-center gap-1.5 pl-1 border-l border-rose-500/20">
+                    <span class="text-[11px] text-rose-200/70">Ses:</span>
+                    <input type="range" id="remote-voice-volume" min="0" max="1" step="0.05" value="1"
+                        oninput="updateRemoteVoiceVolume(this.value)"
+                        class="w-14 accent-rose-500 cursor-pointer h-1 bg-rose-950 rounded-lg">
+                </div>
+
+                <button type="button" id="btn-room-light" onclick="toggleRoomLight()" title="Oda Işığı / Odak Modu"
+                    class="pl-2 border-l border-rose-500/20 flex items-center gap-1 text-xs text-rose-200/85 hover:text-white transition">
+                    <span id="room-light-icon">🕯️</span>
+                    <span id="room-light-label" class="hidden md:inline">Işık</span>
+                </button>
+            </div>
+
+            <!-- Sağ: Odadakiler Butonu, Kalp Yağmuru, Link & İsim -->
+            <div class="relative flex items-center gap-2">
+                <button type="button" onclick="toggleMembersPopover()" title="Odada kimler var?"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#10050b]/90 hover:bg-rose-500/15 border border-rose-500/25 text-rose-100 text-xs font-semibold transition">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>Odadakiler</span>
+                    <span id="members-count-badge" class="px-1.5 py-0.5 rounded-full bg-rose-500/25 text-rose-200 text-[10px] leading-none">1</span>
+                </button>
+
+                <div id="members-popover" class="hidden absolute right-0 top-12 z-30 w-60 rounded-2xl bg-[#1d0a15]/95 border border-rose-500/30 p-3 shadow-2xl backdrop-blur-xl">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-rose-200/75 mb-2">Odadaki Kişiler</div>
+                    <ul id="members-list" class="space-y-1.5 text-xs text-white mb-2.5"></ul>
+                    <div class="pt-2 border-t border-rose-500/20 flex gap-1.5">
+                        <button type="button" onclick="sendRoomNudge('Buradayım 👋')"
+                            class="flex-1 py-1.5 px-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-[11px] text-rose-100 transition">
+                            Buradayım 👋
+                        </button>
+                        <button type="button" onclick="sendRoomNudge('Bak bi 👀')"
+                            class="flex-1 py-1.5 px-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-[11px] text-rose-100 transition">
+                            Bak bi 👀
+                        </button>
+                    </div>
+                </div>
+
+                <button type="button" onclick="triggerPersonalHeartSwirl()" title="Sadece sende kalp yağmuru başlat"
+                    class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-bold shadow-lg shadow-rose-950/60 transition transform active:scale-95">
+                    <span>💘</span>
+                    <span>Kalp Yağmuru</span>
+                </button>
+
+                <button type="button" onclick="copyRoomLink()"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-100 text-xs font-medium transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Link</span>
+                </button>
+
+                <button type="button" onclick="openNameModal()" title="İsmini Değiştir"
+                    class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-200 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ANA ALAN -->
+    <main class="relative z-10 flex-1 max-w-[1550px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- SOL KOLON: EKRAN PAYLAŞIMI (8/12) -->
+        <div class="lg:col-span-8 flex flex-col gap-3">
+
+            <div class="dim-target velvet-glass border border-rose-500/20 px-4 py-3 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+                <div class="text-xs text-rose-100/75">
+                    <span class="text-white font-semibold block text-sm">Ekran Paylaşımı</span>
+                    Sesli paylaşım için pencerede <strong class="text-rose-300">"Sekme sesini de paylaş"</strong> kutucuğunu seç.
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-start-screen" onclick="startScreenShare()"
+                        class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-xs sm:text-sm font-semibold shadow-md transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <span>Ekran Paylaş</span>
+                    </button>
+                    <button type="button" id="btn-stop-screen" onclick="stopScreenShare()" class="hidden px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 text-white text-xs sm:text-sm font-semibold transition">
+                        Paylaşımı Kapat
+                    </button>
+                </div>
+            </div>
+
+            <!-- EKRAN SAHNESİ -->
+            <div id="screen-stage" ondblclick="toggleStageFullscreen()" title="Tam ekran için çift tıkla"
+                class="relative w-full aspect-video bg-[#090307] rounded-2xl overflow-hidden border border-rose-500/25 shadow-2xl shadow-black/80 flex items-center justify-center cursor-pointer">
+                <video id="screen-video-player" autoplay playsinline webkit-playsinline class="w-full h-full object-contain"></video>
+
+                <div id="screen-presenter-badge" class="hidden absolute top-3 left-3 z-20 px-3 py-1 rounded-full bg-black/65 border border-rose-400/30 text-[11px] font-semibold text-rose-100 backdrop-blur-md pointer-events-none">
+                    📺 <span id="screen-presenter-name">Biri</span> ekran paylaşıyor
+                </div>
+
+                <!-- SAĞ ÜSTTEKİ SES AÇ BUTONU (KORUNDU) -->
+                <button type="button" id="btn-unmute-screen" onclick="event.stopPropagation(); unmuteScreenAudio();"
+                    class="hidden absolute top-3 right-3 z-30 px-3.5 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg transition flex items-center gap-1.5">
+                    <span>🔊</span>
+                    <span>Sesi Aç</span>
+                </button>
+
+                <div id="reactions-layer" class="absolute inset-0 pointer-events-none overflow-hidden z-40"></div>
+                <div id="fullscreen-chat-overlay" class="hidden fixed bottom-5 right-5 z-[70] flex flex-col items-end gap-2 pointer-events-none max-w-xs sm:max-w-sm"></div>
+
+                <div id="screen-empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none">
+                    <div class="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-3xl mb-3">
+                        🎞️
+                    </div>
+                    <p class="text-sm sm:text-base font-semibold text-rose-50">Ekran paylaşımı bekleniyor</p>
+                    <p class="text-xs text-rose-200/60 mt-1">Yukarıdaki "Ekran Paylaş" butonuyla yayını başlatabilirsin.</p>
+                </div>
+
+                <button type="button" id="btn-stage-fullscreen" onclick="event.stopPropagation(); toggleStageFullscreen();" title="Tam Ekran"
+                    class="absolute bottom-3 right-3 z-20 p-2.5 rounded-xl bg-black/70 hover:bg-black text-rose-100 border border-rose-500/25 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </button>
+            </div>
+
+            <!-- ALTTAKİ WHATSAPP TARZI TEK TEK CANLI EMOJİLER -->
+            <div class="dim-target velvet-glass border border-rose-500/20 px-4 py-2.5 rounded-2xl flex items-center justify-between gap-2">
+                <span class="text-xs text-rose-200/80 font-medium">Canlı Tepki:</span>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="sendSingleWaEmoji('😂')" class="w-10 h-10 rounded-xl bg-[#10050b] hover:bg-rose-500/20 border border-rose-500/20 flex items-center justify-center text-xl transition transform active:scale-125">😂</button>
+                    <button type="button" onclick="sendSingleWaEmoji('❤️')" class="w-10 h-10 rounded-xl bg-[#10050b] hover:bg-rose-500/20 border border-rose-500/20 flex items-center justify-center text-xl transition transform active:scale-125">❤️</button>
+                    <button type="button" onclick="sendSingleWaEmoji('🔥')" class="w-10 h-10 rounded-xl bg-[#10050b] hover:bg-rose-500/20 border border-rose-500/20 flex items-center justify-center text-xl transition transform active:scale-125">🔥</button>
+                    <button type="button" onclick="sendSingleWaEmoji('😍')" class="w-10 h-10 rounded-xl bg-[#10050b] hover:bg-rose-500/20 border border-rose-500/20 flex items-center justify-center text-xl transition transform active:scale-125">😍</button>
+                    <button type="button" onclick="sendSingleWaEmoji('🥰')" class="w-10 h-10 rounded-xl bg-[#10050b] hover:bg-rose-500/20 border border-rose-500/20 flex items-center justify-center text-xl transition transform active:scale-125">🥰</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SAĞ KOLON: SOHBET (4/12) -->
+        <div class="dim-target lg:col-span-4 velvet-glass border border-rose-500/20 rounded-2xl flex flex-col h-[520px] lg:h-[calc(100vh-112px)] overflow-hidden">
+            <div class="px-4 py-3 border-b border-rose-500/20 bg-[#10050b]/75 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span id="chat-presence-dot" class="w-2.5 h-2.5 rounded-full bg-rose-400/70"></span>
+                    <span id="chat-presence-label" class="text-xs font-semibold text-rose-100">AMOUR Sohbet</span>
+                </div>
+                <span class="text-[10px] text-rose-200/50">2x tık: ❤️ ekle / geri al</span>
+                <button type="button" onclick="clearChatHistory()" class="text-[11px] text-rose-200/60 hover:text-white transition">Temizle</button>
+            </div>
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-3.5 space-y-3">
+                <div class="text-center text-xs text-rose-200/45 py-4">
+                    Mesajlar bu cihazda saklanır.
+                </div>
+            </div>
+
+            <div id="typing-indicator" class="hidden px-4 py-1.5 text-[11px] text-rose-300/90 bg-rose-500/10 border-t border-rose-500/15 flex items-center gap-1.5">
+                <span class="inline-flex gap-0.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce" style="animation-delay:0.12s"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce" style="animation-delay:0.24s"></span>
+                </span>
+                <span id="typing-label">Yazıyor...</span>
+            </div>
+
+            <!-- Hızlı Sohbet Şeridi -->
+            <div class="px-3 pt-2 pb-1.5 border-t border-rose-500/15 bg-[#10050b]/60 flex items-center gap-1.5 overflow-x-auto">
+                <button type="button" onclick="sendQuickNote('😉')" class="px-2 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-xs text-rose-100 shrink-0 transition">😉</button>
+                <button type="button" onclick="sendQuickNote('😌')" class="px-2 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-xs text-rose-100 shrink-0 transition">😌</button>
+                <button type="button" onclick="sendQuickNote('🫶')" class="px-2 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-xs text-rose-100 shrink-0 transition">🫶</button>
+                <button type="button" onclick="sendQuickNote('🤭')" class="px-2 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-xs text-rose-100 shrink-0 transition">🤭</button>
+                <span class="text-rose-300/25 text-xs shrink-0">|</span>
+                <button type="button" onclick="sendQuickNote('Şu an baya sardı 👀')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Şu an baya sardı 👀</button>
+                <button type="button" onclick="sendQuickNote('Sana bi şey sorcam 🤔')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Sana bi şey sorcam 🤔</button>
+                <button type="button" onclick="sendQuickNote('Sen de görüyor musun bunu? 😊')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Sen de görüyor musun bunu? 😊</button>
+                <button type="button" onclick="sendQuickNote('Bence de tam öyle 😄')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Bence de tam öyle 😄</button>
+                <button type="button" onclick="sendQuickNote('Az daha duralım mı? ✨')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Az daha duralım mı? ✨</button>
+                <button type="button" onclick="sendQuickNote('Gözüm senden kaydı biraz 👀')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Gözüm senden kaydı biraz 👀</button>
+                <button type="button" onclick="sendQuickNote('Birazdan konuşalım 👀')" class="px-2.5 py-1 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] text-rose-100 whitespace-nowrap transition">Birazdan konuşalım 👀</button>
+            </div>
+
+            <form id="chat-form" class="p-3 pt-1.5 bg-[#10050b]/85 flex gap-2">
+                <input type="text" id="chat-input" autocomplete="off" placeholder="Mesaj yaz..."
+                    oninput="notifyTyping()"
+                    class="flex-1 px-3.5 py-2.5 rounded-xl bg-[#1b0b14] border border-rose-500/25 text-sm text-white placeholder-rose-200/35 focus:outline-none focus:border-rose-400 transition">
+                <button type="submit"
+                    class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-sm transition flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <audio id="remote-voice-audio" autoplay playsinline></audio>
+
+    <script>
+        const ROOM_SLUG = 'amour-velvet-room';
+        const HOST_PEER_ID = `amour-velvet-host-${ROOM_SLUG}`;
+        const PEER_CONFIG = {
+            debug: 0,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        };
+
+        const state = {
+            name: '',
+            peer: null,
+            conn: null,
+            localChannel: null,
+            role: null,
+            peerName: null,
+            localMicStream: null,
+            micMuted: false,
+            activeVoiceCall: null,
+            localScreenStream: null,
+            activeScreenCall: null,
+            remoteScreenStream: null,
+            typingTimeout: null,
+            remoteTypingTimer: null,
+            reconnectTimer: null,
+            leaveTimer: null,
+            peerInitialized: false,
+            iosPseudoFullscreen: false,
+            pendingAutoUnmute: false
+        };
+
+        function isIOSDevice() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        function isAnyFullscreen() {
+            return Boolean(document.fullscreenElement || document.webkitFullscreenElement || state.iosPseudoFullscreen);
+        }
+
+        function syncFullscreenOverlayVisibility() {
+            const overlay = document.getElementById('fullscreen-chat-overlay');
+            const stage = document.getElementById('screen-stage');
+            const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+            if (!overlay) return;
+
+            if (fsEl) {
+                if (!fsEl.contains(overlay)) fsEl.appendChild(overlay);
+                overlay.classList.remove('hidden');
+            } else if (state.iosPseudoFullscreen) {
+                if (stage && !stage.contains(overlay)) stage.appendChild(overlay);
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+                overlay.innerHTML = '';
+                if (stage && !stage.contains(overlay)) stage.appendChild(overlay);
+            }
+        }
+
+        function toggleStageFullscreen() {
+            const stage = document.getElementById('screen-stage');
+            if (!stage) return;
+
+            const nativeFsEl = document.fullscreenElement || document.webkitFullscreenElement;
+            const canNativeStageFs = typeof stage.requestFullscreen === 'function' || typeof stage.webkitRequestFullscreen === 'function';
+
+            if (!isIOSDevice() && canNativeStageFs) {
+                if (!nativeFsEl) {
+                    const req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+                    req.call(stage).catch(() => {
+                        setIosPseudoFullscreen(true);
+                    });
+                } else {
+                    const ext = document.exitFullscreen || document.webkitExitFullscreen;
+                    if (ext) ext.call(document).catch(() => {});
+                }
+                return;
+            }
+
+            setIosPseudoFullscreen(!state.iosPseudoFullscreen);
+        }
+
+        function setIosPseudoFullscreen(enable) {
+            const stage = document.getElementById('screen-stage');
+            if (!stage) return;
+            state.iosPseudoFullscreen = Boolean(enable);
+            stage.classList.toggle('ios-stage-fullscreen', state.iosPseudoFullscreen);
+            document.body.classList.toggle('ios-fs-active', state.iosPseudoFullscreen);
+            syncFullscreenOverlayVisibility();
+        }
+
+        function currentClockStr() {
+            return new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const styles = {
+                info: 'bg-[#260e1c] border-rose-500/40 text-rose-50',
+                success: 'bg-rose-950/95 border-pink-400/50 text-pink-100',
+                warning: 'bg-amber-950/90 border-amber-500/40 text-amber-100'
+            };
+            toast.className = `px-4 py-2.5 rounded-2xl border shadow-xl text-xs font-medium backdrop-blur-md transition-all duration-300 ${styles[type] || styles.info}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // Kullanıcı herhangi bir yere dokunursa/tıklarsa engellenmiş sesi otomatik açmayı dene
+        function tryUnlockAudioOnGesture() {
+            const voiceAudio = document.getElementById('remote-voice-audio');
+            if (voiceAudio && voiceAudio.srcObject) {
+                voiceAudio.muted = false;
+                voiceAudio.volume = Number(document.getElementById('remote-voice-volume')?.value ?? 1);
+                voiceAudio.play().catch(() => {});
+            }
+
+            if (!state.pendingAutoUnmute) return;
+            const video = document.getElementById('screen-video-player');
+            if (!video || !video.srcObject) return;
+
+            video.muted = false;
+            video.volume = 1;
+            video.play()
+                .then(() => {
+                    state.pendingAutoUnmute = false;
+                    document.getElementById('btn-unmute-screen').classList.add('hidden');
+                })
+                .catch(() => {});
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedName = localStorage.getItem('amour_single_name') || '';
+            document.getElementById('input-name').value = savedName;
+            if (savedName) {
+                enterRoom(savedName);
+            }
+            setupChatForm();
+            renderMembersList();
+
+            document.addEventListener('pointerdown', tryUnlockAudioOnGesture, { passive: true });
+            document.addEventListener('click', tryUnlockAudioOnGesture, { passive: true });
+        });
+
+        window.addEventListener('pagehide', () => {
+            if (state.name) {
+                sendPayload({ type: 'presence_leave', name: state.name, time: currentClockStr() });
+            }
+        });
+
+        document.getElementById('join-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = document.getElementById('input-name').value.trim();
+            if (!val) return;
+            enterRoom(val);
+            tryUnlockAudioOnGesture();
+        });
+
+        function openNameModal() {
+            document.getElementById('input-name').value = state.name;
+            document.getElementById('setup-screen').classList.remove('hidden');
+        }
+
+        function enterRoom(name) {
+            state.name = name;
+            localStorage.setItem('amour_single_name', name);
+            document.getElementById('setup-screen').classList.add('hidden');
+            loadChatHistory();
+            renderMembersList();
+            appendSystemEvent(`${name} odaya girdi • ${currentClockStr()}`);
+            if (!state.peerInitialized) {
+                state.peerInitialized = true;
+                initPeer();
+            } else {
+                sendPayload({ type: 'presence_join', name: state.name, time: currentClockStr() });
+            }
+        }
+
+        function toggleMembersPopover() {
+            document.getElementById('members-popover').classList.toggle('hidden');
+        }
+
+        function sendRoomNudge(labelText) {
+            document.getElementById('members-popover').classList.add('hidden');
+            showToast(`${state.name || 'Sen'}: ${labelText}`, 'info');
+            sendPayload({ type: 'room_nudge', sender: state.name || 'Biri', label: labelText });
+        }
+
+        function renderMembersList() {
+            const listEl = document.getElementById('members-list');
+            const badgeEl = document.getElementById('members-count-badge');
+            if (!listEl || !badgeEl) return;
+
+            const members = [];
+            if (state.name) members.push(`${state.name} (Sen)`);
+            if (state.peerName && state.peerName !== state.name) members.push(state.peerName);
+
+            badgeEl.textContent = String(Math.max(1, members.length));
+            if (!members.length) {
+                listEl.innerHTML = '<li class="text-rose-200/60">Bağlantı bekleniyor...</li>';
+                return;
+            }
+            listEl.innerHTML = members
+                .map((m) => `<li class="flex items-center gap-2 py-1 px-2 rounded-lg bg-rose-500/10"><span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>${escapeHtml(m)}</span></li>`)
+                .join('');
+        }
+
+        function appendSystemEvent(text) {
+            const box = document.getElementById('chat-messages');
+            if (!box) return;
+            const div = document.createElement('div');
+            div.className = 'text-center text-[11px] text-rose-200/70 py-1 px-2 rounded-full bg-rose-500/10 border border-rose-500/15 mx-auto w-fit';
+            div.textContent = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function handlePeerJoined(remoteName, timeStr) {
+            if (state.leaveTimer) {
+                clearTimeout(state.leaveTimer);
+                state.leaveTimer = null;
+            }
+            const cleanName = String(remoteName || '').trim() || 'Biri';
+            const clock = timeStr || currentClockStr();
+            const changed = state.peerName !== cleanName;
+            state.peerName = cleanName;
+            setConnectionUi(true, `${cleanName} odada • ${clock}`);
+            renderMembersList();
+            if (changed) {
+                showToast(`${cleanName} odaya girdi (${clock})`, 'success');
+                appendSystemEvent(`${cleanName} odaya girdi • ${clock}`);
+            }
+
+            if (state.localScreenStream && state.peer && !state.activeScreenCall) {
+                const targetId = getRemotePeerId();
+                if (targetId) {
+                    state.activeScreenCall = state.peer.call(targetId, state.localScreenStream, {
+                        metadata: { kind: 'screen', presenter: state.name || 'Biri' }
+                    });
+                }
+            }
+        }
+
+        function schedulePeerLeft(timeStr) {
+            if (state.leaveTimer) clearTimeout(state.leaveTimer);
+            const clock = timeStr || currentClockStr();
+            state.leaveTimer = setTimeout(() => {
+                if (state.conn && state.conn.open) return;
+                const leftName = state.peerName || 'Biri';
+                state.peerName = null;
+                setConnectionUi(false, `${leftName} çıktı • ${clock}`);
+                renderMembersList();
+                showToast(`${leftName} odadan çıktı (${clock})`, 'info');
+                appendSystemEvent(`${leftName} odadan çıktı • ${clock}`);
+            }, 1800);
+        }
+
+        function copyRoomLink() {
+            const url = `${window.location.origin}${window.location.pathname}`;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url)
+                    .then(() => showToast('AMOUR linki kopyalandı!', 'success'))
+                    .catch(() => {});
+            }
+        }
+
+        function toggleRoomLight() {
+            const dimmed = document.body.classList.toggle('room-dimmed');
+            document.getElementById('room-light-icon').textContent = dimmed ? '🌙' : '🕯️';
+            document.getElementById('room-light-label').textContent = dimmed ? 'Odak' : 'Işık';
+        }
+
+        function setConnectionUi(connected, text) {
+            const dot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            const chatDot = document.getElementById('chat-presence-dot');
+            const chatLabel = document.getElementById('chat-presence-label');
+
+            statusText.textContent = text;
+            dot.className = connected
+                ? 'w-2 h-2 rounded-full bg-emerald-400'
+                : 'w-2 h-2 rounded-full bg-rose-400 animate-pulse';
+
+            chatDot.className = connected
+                ? 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400'
+                : 'w-2.5 h-2.5 rounded-full bg-rose-400/70';
+            chatLabel.textContent = connected ? 'AMOUR Sohbet • Bağlı' : 'AMOUR Sohbet';
+        }
+
+        function scheduleReconnect() {
+            if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
+            state.reconnectTimer = setTimeout(() => {
+                if (state.name) initPeer();
+            }, 4000);
+        }
+
+        function initPeer() {
+            if (state.reconnectTimer) {
+                clearTimeout(state.reconnectTimer);
+                state.reconnectTimer = null;
+            }
+            if (state.peer) {
+                try { state.peer.destroy(); } catch (_) {}
+                state.peer = null;
+            }
+            setupBroadcastChannel();
+
+            setConnectionUi(false, 'Bağlantı bekleniyor...');
+
+            let peer;
+            try {
+                peer = new Peer(HOST_PEER_ID, PEER_CONFIG);
+            } catch (_) {
+                setConnectionUi(false, 'Yerel mod aktif');
+                return;
+            }
+            state.peer = peer;
+
+            peer.on('open', () => {
+                state.role = 'host';
+                setConnectionUi(false, state.peerName ? `${state.peerName} odada` : 'Karşı taraf bekleniyor...');
+                listenIncomingCalls(peer);
+            });
+
+            peer.on('disconnected', () => {
+                if (peer.destroyed) return;
+                try { peer.reconnect(); } catch (_) { scheduleReconnect(); }
+            });
+
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    try { peer.destroy(); } catch (_) {}
+                    connectGuest(HOST_PEER_ID);
+                } else if (!peer.destroyed) {
+                    scheduleReconnect();
+                }
+            });
+        }
+
+        function connectGuest(hostId) {
+            state.role = 'guest';
+            setConnectionUi(false, 'Bağlanılıyor...');
+
+            let guest;
+            try {
+                guest = new Peer(PEER_CONFIG);
+            } catch (_) {
+                scheduleReconnect();
+                return;
+            }
+            state.peer = guest;
+
+            guest.on('open', () => {
+                listenIncomingCalls(guest);
+                const conn = guest.connect(hostId, { reliable: true });
+                bindDataConn(conn);
+            });
+
+            guest.on('disconnected', () => {
+                if (guest.destroyed) return;
+                try { guest.reconnect(); } catch (_) { scheduleReconnect(); }
+            });
+
+            guest.on('error', () => {
+                if (!guest.destroyed) scheduleReconnect();
+            });
+        }
+
+        function setupBroadcastChannel() {
+            if (state.localChannel) {
+                try { state.localChannel.close(); } catch (_) {}
+            }
+            if (typeof BroadcastChannel === 'undefined') return;
+            state.localChannel = new BroadcastChannel(`amour-bc-${ROOM_SLUG}`);
+            state.localChannel.onmessage = (ev) => {
+                const data = ev.data;
+                if (!data || data._from === state.name) return;
+                if (data.type === 'presence_join') {
+                    handlePeerJoined(data.name, data.time);
+                    state.localChannel.postMessage({ type: 'presence_ack', name: state.name, time: currentClockStr(), _from: state.name });
+                    return;
+                }
+                if (data.type === 'presence_ack') {
+                    handlePeerJoined(data.name, data.time);
+                    return;
+                }
+                if (data.type === 'presence_leave') {
+                    schedulePeerLeft(data.time);
+                    return;
+                }
+                handleIncoming(data);
+            };
+            state.localChannel.postMessage({ type: 'presence_join', name: state.name, time: currentClockStr(), _from: state.name });
+        }
+
+        function listenIncomingCalls(peer) {
+            peer.on('connection', (conn) => bindDataConn(conn));
+
+            peer.on('call', (call) => {
+                if (call.metadata && call.metadata.kind === 'screen') {
+                    call.answer();
+                    call.on('stream', (remoteStream) => {
+                        attachScreenStream(remoteStream, call.metadata.presenter || state.peerName || 'Biri');
+                    });
+                    call.on('close', () => {
+                        resetRemoteScreenStage();
+                    });
+                    state.activeScreenCall = call;
+                } else {
+                    if (state.localMicStream) {
+                        call.answer(state.localMicStream);
+                        attachVoiceStream(call);
+                    } else {
+                        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+                            .then((stream) => {
+                                state.localMicStream = stream;
+                                enableVoiceButtons();
+                                call.answer(stream);
+                                attachVoiceStream(call);
+                            })
+                            .catch(() => call.answer());
+                    }
+                }
+            });
+        }
+
+        function bindDataConn(conn) {
+            state.conn = conn;
+            conn.on('open', () => {
+                if (state.conn !== conn) return;
+                conn.send({ type: 'presence_join', name: state.name, time: currentClockStr() });
+            });
+            conn.on('data', (data) => {
+                if (!data || state.conn !== conn) return;
+                if (data.type === 'presence_join') {
+                    handlePeerJoined(data.name, data.time);
+                    conn.send({ type: 'presence_ack', name: state.name, time: currentClockStr() });
+                    return;
+                }
+                if (data.type === 'presence_ack') {
+                    handlePeerJoined(data.name, data.time);
+                    return;
+                }
+                if (data.type === 'presence_leave') {
+                    schedulePeerLeft(data.time);
+                    return;
+                }
+                handleIncoming(data);
+            });
+            conn.on('close', () => {
+                if (state.conn === conn) {
+                    state.conn = null;
+                    schedulePeerLeft(currentClockStr());
+                }
+            });
+        }
+
+        function sendPayload(payload) {
+            if (state.conn && state.conn.open) {
+                try { state.conn.send(payload); } catch (_) {}
+            }
+            if (state.localChannel) {
+                try { state.localChannel.postMessage({ ...payload, _from: state.name }); } catch (_) {}
+            }
+        }
+
+        function sendSingleWaEmoji(emoji) {
+            spawnSingleWaEmoji(emoji);
+            sendPayload({ type: 'wa_emoji', emoji });
+        }
+
+        function spawnSingleWaEmoji(emoji) {
+            const layer = document.getElementById('reactions-layer');
+            if (!layer) return;
+
+            const el = document.createElement('div');
+            el.className = 'wa-single-emoji';
+            el.textContent = emoji;
+
+            const leftPct = 18 + Math.random() * 64;
+            const size = (2.15 + Math.random() * 0.7).toFixed(2);
+            const x1 = ((Math.random() > 0.5 ? 1 : -1) * (10 + Math.random() * 16)).toFixed(0);
+            const x2 = ((Math.random() > 0.5 ? 1 : -1) * (12 + Math.random() * 18)).toFixed(0);
+
+            el.style.left = `${leftPct}%`;
+            el.style.fontSize = `${size}rem`;
+            el.style.setProperty('--wa-x1', `${x1}px`);
+            el.style.setProperty('--wa-x2', `${x2}px`);
+
+            layer.appendChild(el);
+            setTimeout(() => el.remove(), 2300);
+        }
+
+        function triggerPersonalHeartSwirl() {
+            const layer = document.getElementById('reactions-layer');
+            if (!layer) return;
+            const hearts = ['❤️', '💖', '💕', '💗', '💘'];
+            const total = 24;
+
+            for (let i = 0; i < total; i++) {
+                setTimeout(() => {
+                    const el = document.createElement('div');
+                    el.className = 'ig-heart-swirl';
+                    el.textContent = hearts[i % hearts.length];
+
+                    const leftPct = 10 + Math.random() * 80;
+                    const size = (1.6 + Math.random() * 1.4).toFixed(2);
+                    const dur = (2.3 + Math.random() * 1.1).toFixed(2);
+                    const dir = Math.random() > 0.5 ? 1 : -1;
+
+                    el.style.left = `${leftPct}%`;
+                    el.style.fontSize = `${size}rem`;
+                    el.style.setProperty('--hdur', `${dur}s`);
+                    el.style.setProperty('--h1', `${dir * (28 + Math.random() * 34)}px`);
+                    el.style.setProperty('--h2', `${dir * -1 * (32 + Math.random() * 38)}px`);
+                    el.style.setProperty('--h3', `${dir * (24 + Math.random() * 32)}px`);
+                    el.style.setProperty('--h4', `${dir * -1 * (16 + Math.random() * 22)}px`);
+
+                    layer.appendChild(el);
+                    setTimeout(() => el.remove(), Number(dur) * 1000 + 120);
+                }, i * 65);
+            }
+        }
+
+        function notifyTyping() {
+            if (state.typingTimeout) return;
+            sendPayload({ type: 'typing', sender: state.name || 'Biri' });
+            state.typingTimeout = setTimeout(() => {
+                state.typingTimeout = null;
+            }, 900);
+        }
+
+        function showRemoteTyping(senderName) {
+            const bar = document.getElementById('typing-indicator');
+            const label = document.getElementById('typing-label');
+            if (!bar || !label) return;
+            label.textContent = `${senderName || 'Karşı taraf'} yazıyor...`;
+            bar.classList.remove('hidden');
+
+            if (state.remoteTypingTimer) clearTimeout(state.remoteTypingTimer);
+            state.remoteTypingTimer = setTimeout(() => {
+                bar.classList.add('hidden');
+            }, 1600);
+        }
+
+        function pushOutgoingMessage(text) {
+            const clean = String(text || '').trim();
+            if (!clean) return;
+
+            const msg = {
+                id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                sender: state.name || 'Sen',
+                text: clean,
+                time: currentClockStr(),
+                hearted: false
+            };
+
+            appendChatBubble(msg, true);
+            saveChatBubble(msg);
+            showTransparentFullscreenCard(msg);
+            sendPayload({ type: 'chat', message: msg });
+        }
+
+        function sendQuickNote(noteText) {
+            pushOutgoingMessage(noteText);
+        }
+
+        function setupChatForm() {
+            document.getElementById('chat-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if (!text) return;
+                pushOutgoingMessage(text);
+                input.value = '';
+            });
+        }
+
+        function toggleMessageHeart(msgId, broadcast = true) {
+            const bubbleEl = document.querySelector(`[data-msg-id="${CSS.escape(msgId)}"]`);
+            const badgeEl = document.querySelector(`[data-heart-badge="${CSS.escape(msgId)}"]`);
+
+            let nextState = true;
+            try {
+                const raw = localStorage.getItem('amour_chat_v1');
+                const list = raw ? JSON.parse(raw) : [];
+                const target = list.find((m) => m.id === msgId);
+                if (target) {
+                    nextState = !Boolean(target.hearted);
+                    target.hearted = nextState;
+                    localStorage.setItem('amour_chat_v1', JSON.stringify(list));
+                }
+            } catch (_) {}
+
+            if (badgeEl) {
+                if (nextState) {
+                    badgeEl.textContent = '❤️';
+                    badgeEl.classList.remove('hidden');
+                } else {
+                    badgeEl.textContent = '';
+                    badgeEl.classList.add('hidden');
+                }
+            }
+
+            if (bubbleEl) {
+                bubbleEl.classList.add('scale-105');
+                setTimeout(() => bubbleEl.classList.remove('scale-105'), 160);
+            }
+
+            if (broadcast) {
+                sendPayload({ type: 'msg_heart_toggle', msgId, hearted: nextState });
+            }
+        }
+
+        function applyRemoteMessageHeart(msgId, hearted) {
+            try {
+                const raw = localStorage.getItem('amour_chat_v1');
+                const list = raw ? JSON.parse(raw) : [];
+                const target = list.find((m) => m.id === msgId);
+                if (target) {
+                    target.hearted = Boolean(hearted);
+                    localStorage.setItem('amour_chat_v1', JSON.stringify(list));
+                }
+            } catch (_) {}
+
+            const badgeEl = document.querySelector(`[data-heart-badge="${CSS.escape(msgId)}"]`);
+            if (badgeEl) {
+                if (hearted) {
+                    badgeEl.textContent = '❤️';
+                    badgeEl.classList.remove('hidden');
+                } else {
+                    badgeEl.textContent = '';
+                    badgeEl.classList.add('hidden');
+                }
+            }
+        }
+
+        function appendChatBubble(msg, isMine) {
+            const box = document.getElementById('chat-messages');
+            const row = document.createElement('div');
+            row.className = `flex flex-col ${isMine ? 'items-end' : 'items-start'}`;
+
+            const heartHiddenClass = msg.hearted ? '' : 'hidden';
+            const heartText = msg.hearted ? '❤️' : '';
+
+            row.innerHTML = `
+                <div class="flex items-center gap-1.5 text-[10px] text-rose-200/55 mb-0.5 px-1">
+                    <span>${escapeHtml(msg.sender)}</span>
+                    <span>•</span>
+                    <span>${escapeHtml(msg.time)}</span>
+                </div>
+                <div class="relative max-w-[85%] select-none">
+                    <div data-msg-id="${escapeHtml(msg.id)}"
+                        ondblclick="toggleMessageHeart('${escapeHtml(msg.id)}', true)"
+                        title="Kalp koymak veya geri çekmek için çift tıkla"
+                        class="cursor-pointer px-3.5 py-2 rounded-2xl text-xs sm:text-sm break-words shadow-md transition-transform duration-150 ${
+                            isMine
+                                ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-br-sm'
+                                : 'bg-gradient-to-r from-fuchsia-700/85 to-rose-700/85 border border-pink-400/30 text-white rounded-bl-sm'
+                        }">${escapeHtml(msg.text)}</div>
+                    <span data-heart-badge="${escapeHtml(msg.id)}"
+                        class="${heartHiddenClass} absolute -bottom-2 ${isMine ? '-left-1.5' : '-right-1.5'} px-1.5 py-0.5 rounded-full bg-[#1a0913] border border-rose-400/40 text-xs shadow">${heartText}</span>
+                </div>
+            `;
+            box.appendChild(row);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function saveChatBubble(msg) {
+            try {
+                const raw = localStorage.getItem('amour_chat_v1');
+                const list = raw ? JSON.parse(raw) : [];
+                list.push(msg);
+                localStorage.setItem('amour_chat_v1', JSON.stringify(list.slice(-150)));
+            } catch (_) {}
+        }
+
+        function loadChatHistory() {
+            const box = document.getElementById('chat-messages');
+            box.innerHTML = '';
+            try {
+                const raw = localStorage.getItem('amour_chat_v1');
+                const list = raw ? JSON.parse(raw) : [];
+                if (!list.length) {
+                    box.innerHTML = '<div class="text-center text-xs text-rose-200/45 py-4">Mesajlar bu cihazda saklanır.</div>';
+                    return;
+                }
+                list.forEach((m) => appendChatBubble(m, m.sender === state.name));
+            } catch (_) {}
+        }
+
+        function clearChatHistory() {
+            localStorage.removeItem('amour_chat_v1');
+            loadChatHistory();
+        }
+
+        function showTransparentFullscreenCard(msg) {
+            if (!isAnyFullscreen()) return;
+
+            const overlay = document.getElementById('fullscreen-chat-overlay');
+            if (!overlay) return;
+
+            const card = document.createElement('div');
+            card.className = 'fs-transparent-card w-full rounded-2xl bg-black/35 border border-white/15 px-3.5 py-2 shadow-lg backdrop-blur-md text-white';
+            card.innerHTML = `
+                <div class="flex items-center justify-between gap-2 text-[11px] mb-0.5">
+                    <span class="font-bold text-rose-200 drop-shadow truncate">${escapeHtml(msg.sender)}</span>
+                    <span class="text-white/60 shrink-0">${escapeHtml(msg.time)}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-white drop-shadow leading-snug break-words">${escapeHtml(msg.text)}</p>
+            `;
+
+            overlay.appendChild(card);
+            while (overlay.children.length > 3) {
+                overlay.firstElementChild.remove();
+            }
+
+            setTimeout(() => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(8px)';
+                card.style.transition = 'all 0.25s ease';
+                setTimeout(() => card.remove(), 260);
+            }, 4600);
+        }
+
+        document.addEventListener('fullscreenchange', syncFullscreenOverlayVisibility);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenOverlayVisibility);
+
+        function enableVoiceButtons() {
+            const muteBtn = document.getElementById('btn-mute-toggle');
+            muteBtn.disabled = false;
+            muteBtn.classList.remove('text-rose-300/40', 'bg-rose-500/10');
+            muteBtn.classList.add('text-emerald-300', 'bg-rose-500/20');
+            document.getElementById('voice-btn-label').textContent = 'Sesli Açık';
+        }
+
+        async function toggleVoiceChat() {
+            if (state.localMicStream) {
+                state.localMicStream.getTracks().forEach((t) => t.stop());
+                state.localMicStream = null;
+                document.getElementById('voice-btn-label').textContent = 'Sesli Sohbet';
+                document.getElementById('btn-mute-toggle').disabled = true;
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                state.localMicStream = stream;
+                enableVoiceButtons();
+                const targetId = getRemotePeerId();
+                if (targetId && state.peer) {
+                    const call = state.peer.call(targetId, stream, { metadata: { kind: 'voice' } });
+                    attachVoiceStream(call);
+                }
+            } catch (_) {
+                showToast('Mikrofon izni verilmedi.', 'warning');
+            }
+        }
+
+        function getRemotePeerId() {
+            if (state.role === 'guest') return HOST_PEER_ID;
+            if (state.conn && state.conn.peer) return state.conn.peer;
+            return null;
+        }
+
+        function toggleMuteMic() {
+            if (!state.localMicStream) return;
+            state.micMuted = !state.micMuted;
+            state.localMicStream.getAudioTracks().forEach((t) => {
+                t.enabled = !state.micMuted;
+            });
+        }
+
+        function updateRemoteVoiceVolume(val) {
+            const audio = document.getElementById('remote-voice-audio');
+            if (audio) audio.volume = Number(val);
+        }
+
+        function attachVoiceStream(call) {
+            state.activeVoiceCall = call;
+            call.on('stream', (stream) => {
+                const audio = document.getElementById('remote-voice-audio');
+                audio.srcObject = stream;
+                audio.muted = false;
+                audio.volume = Number(document.getElementById('remote-voice-volume')?.value ?? 1);
+                audio.play().catch(() => {});
+            });
+        }
+
+        function setPresenterBadge(presenterName) {
+            const badge = document.getElementById('screen-presenter-badge');
+            const nameEl = document.getElementById('screen-presenter-name');
+            if (!badge || !nameEl) return;
+            if (presenterName) {
+                nameEl.textContent = presenterName;
+                badge.classList.remove('hidden');
+            } else {
+                nameEl.textContent = '';
+                badge.classList.add('hidden');
+            }
+        }
+
+        async function startScreenShare() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                showToast('Bu cihaz/tarayıcı ekran paylaşımı göndermeyi desteklemiyor.', 'warning');
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: 30 },
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+                state.localScreenStream = stream;
+
+                const video = document.getElementById('screen-video-player');
+                video.srcObject = stream;
+                video.muted = true;
+                video.play().catch(() => {});
+                document.getElementById('screen-empty-state').classList.add('hidden');
+                document.getElementById('btn-start-screen').classList.add('hidden');
+                document.getElementById('btn-stop-screen').classList.remove('hidden');
+                setPresenterBadge(state.name || 'Sen');
+
+                sendPayload({ type: 'screen_started', presenter: state.name || 'Biri' });
+
+                const targetId = getRemotePeerId();
+                if (targetId && state.peer) {
+                    state.activeScreenCall = state.peer.call(targetId, stream, {
+                        metadata: { kind: 'screen', presenter: state.name || 'Biri' }
+                    });
+                }
+
+                stream.getVideoTracks()[0].addEventListener('ended', stopScreenShare);
+            } catch (_) {
+                showToast('Ekran paylaşımı iptal edildi.', 'warning');
+            }
+        }
+
+        function stopScreenShare() {
+            if (state.localScreenStream) {
+                state.localScreenStream.getTracks().forEach((t) => t.stop());
+                state.localScreenStream = null;
+            }
+            if (state.activeScreenCall) {
+                try { state.activeScreenCall.close(); } catch (_) {}
+                state.activeScreenCall = null;
+            }
+            sendPayload({ type: 'screen_stopped' });
+            const video = document.getElementById('screen-video-player');
+            video.srcObject = null;
+            setPresenterBadge(null);
+            state.pendingAutoUnmute = false;
+            document.getElementById('btn-unmute-screen').classList.add('hidden');
+            document.getElementById('screen-empty-state').classList.remove('hidden');
+            document.getElementById('btn-start-screen').classList.remove('hidden');
+            document.getElementById('btn-stop-screen').classList.add('hidden');
+        }
+
+        function resetRemoteScreenStage() {
+            state.remoteScreenStream = null;
+            state.activeScreenCall = null;
+            state.pendingAutoUnmute = false;
+            const video = document.getElementById('screen-video-player');
+            video.srcObject = null;
+            setPresenterBadge(null);
+            document.getElementById('btn-unmute-screen').classList.add('hidden');
+            document.getElementById('screen-empty-state').classList.remove('hidden');
+        }
+
+        function unmuteScreenAudio() {
+            const video = document.getElementById('screen-video-player');
+            if (!video) return;
+            video.muted = false;
+            video.volume = 1;
+            video.play()
+                .then(() => {
+                    state.pendingAutoUnmute = false;
+                    document.getElementById('btn-unmute-screen').classList.add('hidden');
+                    showToast('Ekran sesi açıldı!', 'success');
+                })
+                .catch(() => {
+                    showToast('Ses açılamadı, tekrar dene.', 'warning');
+                });
+        }
+
+        function attachScreenStream(remoteStream, presenterName) {
+            state.remoteScreenStream = remoteStream;
+            const video = document.getElementById('screen-video-player');
+            video.srcObject = remoteStream;
+            video.playsInline = true;
+
+            // Önce otomatik olarak sesli oynatmayı dene
+            video.muted = false;
+            video.volume = 1;
+
+            setPresenterBadge(presenterName || 'Karşı taraf');
+            document.getElementById('screen-empty-state').classList.add('hidden');
+
+            const hasAudio = remoteStream.getAudioTracks && remoteStream.getAudioTracks().length > 0;
+
+            video.play().then(() => {
+                state.pendingAutoUnmute = false;
+                document.getElementById('btn-unmute-screen').classList.add('hidden');
+                if (!hasAudio) {
+                    showToast('Karşı taraf sekme/ekran sesi paylaşmamış olabilir.', 'warning');
+                }
+            }).catch(() => {
+                // Otomatik sesli oynatma engellendiyse sessiz başlat ve "Sesi Aç" butonunu göster
+                video.muted = true;
+                video.play().catch(() => {});
+                if (hasAudio) {
+                    state.pendingAutoUnmute = true;
+                    document.getElementById('btn-unmute-screen').classList.remove('hidden');
+                }
+            });
+        }
+
+        function handleIncoming(data) {
+            if (!data || !data.type) return;
+            if (data.type === 'chat' && data.message) {
+                appendChatBubble(data.message, false);
+                saveChatBubble(data.message);
+                showTransparentFullscreenCard(data.message);
+            } else if (data.type === 'wa_emoji' && data.emoji) {
+                spawnSingleWaEmoji(data.emoji);
+            } else if (data.type === 'typing') {
+                showRemoteTyping(data.sender);
+            } else if (data.type === 'msg_heart_toggle' && data.msgId) {
+                applyRemoteMessageHeart(data.msgId, data.hearted);
+            } else if (data.type === 'room_nudge') {
+                showToast(`${data.sender || 'Biri'}: ${data.label || 'Buradayım 👋'}`, 'info');
+            } else if (data.type === 'screen_started') {
+                setPresenterBadge(data.presenter || state.peerName || 'Biri');
+                document.getElementById('screen-empty-state').classList.add('hidden');
+            } else if (data.type === 'screen_stopped') {
+                resetRemoteScreenStage();
+            }
+        }
+    </script>
+</body>
+</html>
